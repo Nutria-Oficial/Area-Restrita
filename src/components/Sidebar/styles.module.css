@@ -1,0 +1,103 @@
+.sidebar {
+  width: 240px;
+  min-height: 100vh;
+  background: #f3f3f3;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  gap: 16px;
+  font-family: 'Inter', sans-serif;
+}
+
+.logo {
+  font-family: 'Kodchasan', sans-serif;
+  font-size: 32px;
+  color: #f97316;
+  font-weight: 700;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #dedede;
+}
+
+.nome {
+  font-size: 14px;
+  color: #111;
+  font-weight: 600;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #333;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background .2s, color .2s, box-shadow .2s, filter .2s;
+}
+
+.link:hover {
+  background: #ff5c2b;
+  color: #fff;
+}
+
+.active {
+  background: #f97316;
+  color: #fff;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  transition: filter 0.2s;
+}
+
+.active img {
+  filter: brightness(0) invert(1);
+}
+
+
+.footer {
+  margin-top: auto;
+  padding: 8px 4px;
+}
+
+.logout {
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.logout:hover {
+  background: #eaeaea;
+}
