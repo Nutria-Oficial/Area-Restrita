@@ -14,15 +14,19 @@ const items = [
 ];
 
 export default function Sidebar() {
+  // pega o usuário salvo após o login
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  const avatarSrc = user?.foto
-    ? (user.foto.startsWith("http") ? user.foto : `/icons/${user.foto}`)
+  // ajusta a origem da imagem
+  const avatarSrc = user?.foto || user?.imagem
+    ? (user.foto?.startsWith("http") || user.imagem?.startsWith("http")
+        ? user.foto || user.imagem
+        : `/icons/${user.foto || user.imagem}`)
     : defaultAvatar;
 
   const handleLogout = () => {
     localStorage.removeItem("user");
-    window.location.reload(); 
+    window.location.reload();
   };
 
   return (

@@ -1,0 +1,53 @@
+.organograma {
+  flex: 1;
+  padding: 40px 60px;
+  background-color: #fff;
+}
+
+.grupo {
+  margin-bottom: 50px;
+}
+
+.grupo h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1c1c1c;
+  margin-bottom: 30px;
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 60px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.card img {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 15px;
+}
+
+.card h3 {
+  font-size: 18px;
+  color: #222;
+  margin: 0;
+}
+
+.cargo {
+  font-size: 14px;
+  color: #555;
+}
+
+.idade {
+  font-size: 15px;
+  color: #f15a24; 
+}
