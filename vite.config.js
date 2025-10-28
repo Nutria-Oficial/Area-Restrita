@@ -1,7 +1,18 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-})
+  server: {
+    host: true,
+    port: 5173,
+    proxy: {
+      "/api/chatbot/": {
+        target: "https://nutria-fast-api.koyeb.app",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/chatbot\//, "/chatbot/"),
+      },
+    },
+  },
+});
