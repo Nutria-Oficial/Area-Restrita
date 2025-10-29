@@ -1,39 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./styles.module.css";
 
-const API_URL = "/api/chatbot/"; 
+const URL_API = "/api/chatbot/";
+const TEMPO_LIMITE_MS = 45000;
+const TENTATIVAS = 1;
 
-async function postJSON(url, body, { timeoutMs = 45000, retries = 1 } = {}) {
-  const attempt = async () => {
+async function enviarJSON(url, corpo, { timeoutMs = TEMPO_LIMITE_MS, retries = TENTATIVAS } = {}) {
+  const tentar = async () => {
     const controller = new AbortController();
-    const to = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const res = await fetch(url, {
+      const resposta = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(corpo),
         signal: controller.signal,
       });
 
-      let data;
+      let dados;
       try {
-        data = await res.clone().json();
+        dados = await resposta.clone().json();
       } catch {
-        data = { message: await res.text() };
+        dados = { message: await resposta.text() };
       }
 
-      return { ok: res.ok, status: res.status, data };
+      return { ok: resposta.ok, status: resposta.status, data: dados };
     } finally {
-      clearTimeout(to);
+      clearTimeout(timer);
     }
   };
 
-  let lastErr, lastResp;
+  let ultimoErro, ultimaResposta;
+
   for (let i = 0; i <= retries; i++) {
     try {
-      const resp = await attempt();
-      lastResp = resp;
+      const resp = await tentar();
+      ultimaResposta = resp;
 
       if (!resp.ok && [502, 503, 504, 524].includes(resp.status) && i < retries) {
         await new Promise(r => setTimeout(r, 1000 * (i + 1)));
@@ -41,32 +44,44 @@ async function postJSON(url, body, { timeoutMs = 45000, retries = 1 } = {}) {
       }
       return resp;
     } catch (e) {
-      lastErr = e;
-      if ((e?.name === "AbortError" || e?.message?.includes("NetworkError")) && i < retries) {
+      ultimoErro = e;
+      const erroDeRede = e?.name === "AbortError" || e?.message?.includes("NetworkError");
+      if (erroDeRede && i < retries) {
         await new Promise(r => setTimeout(r, 800));
         continue;
       }
       throw e;
     }
   }
-  if (lastResp) return lastResp;
-  throw lastErr;
+
+  if (ultimaResposta) return ultimaResposta;
+  throw ultimoErro;
+}
+
+function extrairTextoDoBot(json) {
+  if (!json || typeof json !== "object") return String(json ?? "");
+  return (
+    json.cResponse ||json.response || json.answer || json.message || json.result || json.Resposta ||
+    Object.values(json).find(v => typeof v === "string") ||
+    JSON.stringify(json)
+  );
 }
 
 export default function Chat() {
-  const [messages, setMessages] = useState([
+  const [mensagens, setMensagens] = useState([
     {
       id: crypto.randomUUID(),
       role: "assistant",
       text: "Olá! Estou aqui para ajudar. Qual é a sua dúvida sobre a tabela nutricional?",
     },
   ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const listRef = useRef(null);
 
-  const userId = useMemo(() => {
+  const [texto, setTexto] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState("");
+  const listaRef = useRef(null);
+
+  const idUsuario = useMemo(() => {
     try {
       const u = JSON.parse(localStorage.getItem("user") || "{}");
       return Number(u?.id || u?.nCdUser || 999);
@@ -76,63 +91,48 @@ export default function Chat() {
   }, []);
 
   useEffect(() => {
-    listRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    listaRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth" });
+  }, [mensagens, carregando]);
 
-  const extractBotText = (json) => {
-    if (!json || typeof json !== "object") return String(json ?? "");
-    return (
-      json.cResponse ||
-      json.response ||
-      json.answer ||
-      json.message ||
-      json.result ||
-      json.Resposta ||
-      Object.values(json).find((v) => typeof v === "string") ||
-      JSON.stringify(json)
-    );
+  const adicionarMensagem = (papel, conteudo) => {
+    setMensagens(prev => [...prev, { id: crypto.randomUUID(), role: papel, text: conteudo }]);
   };
 
-  const addMensagemIA = (role, text) => {
-    setMessages((prev) => [...prev, { id: crypto.randomUUID(), role, text }]);
-  };
+  const enviarMensagem = async () => {
+    const conteudo = texto.trim();
+    if (!conteudo || carregando) return;
 
-  const enviar = async () => {
-    const trimmed = input.trim();
-    if (!trimmed || loading) return;
-    setError("");
-    addMensagemIA("user", trimmed);
-    setInput("");
-    setLoading(true);
+    setErro("");
+    adicionarMensagem("user", conteudo);
+    setTexto("");
+    setCarregando(true);
 
     try {
-      const resp = await postJSON(API_URL, { cPrompt: trimmed, nCdUser: Number(userId) }, { timeoutMs: 45000, retries: 1 });
+      const payload = { cPrompt: conteudo, nCdUser: Number(idUsuario) };
+      const resp = await enviarJSON(URL_API, payload, { timeoutMs: TEMPO_LIMITE_MS, retries: TENTATIVAS });
 
       if (!resp.ok) {
-        addMensagemIA(
-          "assistant",
-          "O servidor demorou ou falhou em processar. Tenta de novo daqui a pouco."
-        );
+        adicionarMensagem("assistant", "O servidor demorou ou falhou em processar. Tente novamente mais tarde.");
         return;
       }
 
-      const botText = extractBotText(resp.data) || "Sem conteúdo na resposta.";
-      addMensagemIA("assistant", botText);
+      const textoBot = extrairTextoDoBot(resp.data) || "Sem conteúdo na resposta.";
+      adicionarMensagem("assistant", textoBot);
     } catch (e) {
       if (e?.name === "AbortError") {
-        setError("Tempo esgotado falando com o serviço.");
-        return;
+        setErro("Tempo esgotado falando com o serviço.");
+      } else {
+        setErro("Falha de rede ou erro inesperado. Já coloquei gelo.");
       }
-      setError("Falha de rede ou erro inesperado. Já coloquei gelo.");
     } finally {
-      setLoading(false);
+      setCarregando(false);
     }
   };
 
-  const enter = (e) => {
+  const aoPressionarEnter = e => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      enviar();
+      enviarMensagem();
     }
   };
 
@@ -142,8 +142,8 @@ export default function Chat() {
         <h1>Chatbot</h1>
       </header>
 
-      <main className={styles.body} ref={listRef}>
-        {messages.map((msg) => (
+      <main className={styles.body} ref={listaRef}>
+        {mensagens.map(msg => (
           <div
             key={msg.id}
             className={`${styles.bubble} ${msg.role === "user" ? styles.user : styles.assistant}`}
@@ -151,29 +151,31 @@ export default function Chat() {
             <p>{msg.text}</p>
           </div>
         ))}
-        {loading && (
+
+        {carregando && (
           <div className={`${styles.bubble} ${styles.assistant} ${styles.thinking}`}>
             <p>Digitando…</p>
           </div>
         )}
-        {error && <div className={styles.error}>{error}</div>}
+
+        {erro && <div className={styles.error}>{erro}</div>}
       </main>
 
       <footer className={styles.footer}>
         <div className={styles.inputBox}>
           <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={enter}
+            value={texto}
+            onChange={e => setTexto(e.target.value)}
+            onKeyDown={aoPressionarEnter}
             placeholder="Digite sua mensagem…"
-            disabled={loading}
+            disabled={carregando}
             rows={1}
           />
           <button
             type="button"
-            onClick={enviar}
+            onClick={enviarMensagem}
             aria-label="Enviar"
-            disabled={loading || !input.trim()}
+            disabled={carregando || !texto.trim()}
             className={styles.sendBtn}
           >
             ➤
