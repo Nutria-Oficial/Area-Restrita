@@ -6,13 +6,5 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    proxy: {
-      "/api/chatbot/": {
-        target: "https://nutria-fast-api.koyeb.app",
-        changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/api\/chatbot\//, "/chatbot/"),
-      },
-    },
   },
 });

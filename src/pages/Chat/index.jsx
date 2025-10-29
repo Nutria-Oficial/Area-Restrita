@@ -1,17 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./styles.module.css";
 
-const URL_API = "/api/chatbot/";
+const URL_API =
+  import.meta.env.VITE_API_BASE ||
+  "https://nutria-fast-api.koyeb.app/chatbot/";
+
 const TEMPO_LIMITE_MS = 45000;
 const TENTATIVAS = 1;
 
-async function enviarJSON(url, corpo, { timeoutMs = TEMPO_LIMITE_MS, retries = TENTATIVAS } = {}) {
+//erro de timeout
+async function enviarJSON(
+  urlAbsoluta,
+  corpo,
+  { timeoutMs = TEMPO_LIMITE_MS, retries = TENTATIVAS } = {}
+) {
   const tentar = async () => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const resposta = await fetch(url, {
+      const resposta = await fetch(urlAbsoluta, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(corpo),
@@ -30,7 +38,7 @@ async function enviarJSON(url, corpo, { timeoutMs = TEMPO_LIMITE_MS, retries = T
       clearTimeout(timer);
     }
   };
-
+//erros
   let ultimoErro, ultimaResposta;
 
   for (let i = 0; i <= retries; i++) {
@@ -45,7 +53,8 @@ async function enviarJSON(url, corpo, { timeoutMs = TEMPO_LIMITE_MS, retries = T
       return resp;
     } catch (e) {
       ultimoErro = e;
-      const erroDeRede = e?.name === "AbortError" || e?.message?.includes("NetworkError");
+      const erroDeRede =
+        e?.name === "AbortError" || e?.message?.includes("NetworkError");
       if (erroDeRede && i < retries) {
         await new Promise(r => setTimeout(r, 800));
         continue;
@@ -61,7 +70,12 @@ async function enviarJSON(url, corpo, { timeoutMs = TEMPO_LIMITE_MS, retries = T
 function extrairTextoDoBot(json) {
   if (!json || typeof json !== "object") return String(json ?? "");
   return (
-    json.cResponse ||json.response || json.answer || json.message || json.result || json.Resposta ||
+    json.cResponse ||
+    json.response ||
+    json.answer ||
+    json.message ||
+    json.result ||
+    json.Resposta ||
     Object.values(json).find(v => typeof v === "string") ||
     JSON.stringify(json)
   );
@@ -109,10 +123,14 @@ export default function Chat() {
 
     try {
       const payload = { cPrompt: conteudo, nCdUser: Number(idUsuario) };
-      const resp = await enviarJSON(URL_API, payload, { timeoutMs: TEMPO_LIMITE_MS, retries: TENTATIVAS });
+      // Chamada direta ao backend, sem proxy do Vite
+      const resp = await enviarJSON(URL_API, payload);
 
       if (!resp.ok) {
-        adicionarMensagem("assistant", "O servidor demorou ou falhou em processar. Tente novamente mais tarde.");
+        adicionarMensagem(
+          "assistant",
+          "O servidor demorou ou falhou em processar. Tente novamente mais tarde."
+        );
         return;
       }
 

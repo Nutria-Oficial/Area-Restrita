@@ -38,7 +38,7 @@ export default function Organograma() {
     {
       nome: "Luke Pereira",
       cargo: "Product Owner",
-      idade: "16 anos",
+      idade: "17 anos",
       foto: "/luke.png",
     },
     {
